@@ -1,0 +1,9 @@
+{
+  "name": "first-express-app",
+  "description": "a fine piece of express art",
+  "version": "0.0.1",
+  "dependencies": {
+    "body-parser": "^1.8.2",
+    "express": "^4.9.3"
+  }
+}
