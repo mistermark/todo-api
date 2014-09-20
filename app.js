@@ -1,4 +1,3 @@
-
 // BASE SETUP
 // =============================================================================
 
@@ -8,60 +7,77 @@ var express = require('express'),
   app = express(),
   bodyParser = require('body-parser');
 
-var base = '/api',
-  port = process.env.PORT || 5123;
-
-var Todo = require('./app/models/todos');
+var config = require('./app/config/configuration'),
+  Todo = require('./app/models/todos'),
+  env = process.env.NODE_ENV;
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 // app.use(favicon(__dirname + '/static/favicon.ico'));
 
 
-mongoose.connect('mongodb://@localhost:27017/ds_todoist');
+// CONNECT TO OUR MONGODB
+// =============================================================================
+var dbOptions = {
+  user: config.db[env].username,
+  pass: config.db[env].password,
+  replset: {
+    socketOptions: {
+      keepAlive: 1
+    }
+  }
+}
+mongoose.connect('mongodb://' + '@' + config.db[env].url + ':' + config.db[env].port +
+  '/' + config.db[env].name, dbOptions);
 
 
 // ROUTES FOR OUR API
 // =============================================================================
-var router = express.Router();        // get an instance of the express Router
+var router = express.Router(); // get an instance of the express Router
 
 router.use(function(req, res, next) {
   console.log('%s %s - %s', (new Date).toString(), req.method, req.url);
+  // Website you wish to allow to connect
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader("Access-Control-Allow-Headers", "X-Requested-With");
+  res.header("Access-Control-Allow-Methods", "GET, POST","PUT");
   next();
 });
 
 
 router.get('/', function(req, res) {
-  res.json({ message: "Phoobar" });
+  res.json({
+    message: "Phoobar"
+  });
 });
 
-// app.get('/todo/:id', function(req, res) {
-//   if (quotes.length <= req.params.id || req.params.id < 0) {
-//     res.statusCode = 404;
-//     return res.send('Error 404: No quote found');
-//   }
-//   var q = quotes[req.params.id];
-//   res.json(q);
-// });
 
 router.route('/todos')
 
   // POST a new todo
-  .post(function (req, res) {
-    // if (!req.body.hasOwnProperty('title') || req.body.title != '') {
+  .post(function(req, res, next) {
+    // if (!req.body.hasOwnProperty('title') || req.body.title == '') {
     //   res.statusCode = 400;
-    //   res.send('Error 400: Post syntax incorrect');
+    //   return next({
+    //     message: 'Post syntax incorrect',
+    //     status: 400,
+    //     request: req.body
+    //   });
     // }
 
     var todo = new Todo();
     todo.title = req.body.title;
     todo.done = false;
 
+    console.log(req.body);
+
     todo.save(function(err) {
       if (err)
-        res.send(err);
+        return next(err);
 
-      res.json({ message: "Todo added"});
+      res.json({
+        message: "Todo added"
+      });
     });
 
   })
@@ -70,33 +86,70 @@ router.route('/todos')
   .get(function(req, res) {
     Todo.find(function(err, todos) {
       if (err)
-        res.send(err);
-
+        return next(err);
       res.json(todos);
     });
   });
 
-// app.delete('/todo/:id', function(req, res) {
-//   if (quotes.length <= req.params.id) {
-//     res.statusCode = 404;
-//     return res.send('Error 404: No quote found');
-//   }
+// on routes that end in /todo/:id
+// ----------------------------------------------------
+router.route('/todos/:todo_id')
 
-//   quotes.splice(req.params.id, 1);
-//   res.json(true);
-// });
+  .get(function(req, res, next) {
+    Todo.findById(req.params.todo_id, function(err, todo) {
 
+      if (err || !todo)
+        return next(err);
+
+      res.json(todo);
+    })
+  })
+
+  .put(function(req, res, next) {
+    Todo.findById(req.params.todo_id, function(err, todo) {
+
+      if (err)
+        return next(err);
+
+      todo.title = req.body.title;
+
+      todo.save(function(err) {
+        if (err)
+          return next(err);
+
+        res.json({
+          message: 'Todo updated.'
+        });
+      });
+
+    });
+  })
+
+  .delete(function(req, res, next) {
+    Todo.remove({
+      _id: req.params.todo_id
+    }, function(err, todo) {
+      if (err)
+        return next(err);
+
+      res.json({
+        message: 'Todo deleted'
+      });
+    });
+  });
 
 
 // ERROR HANDLING ------------------------------------
 router.use(function(req, res, next) {
 
   res.status(404);
+
   if (req.accepts('html')) {
     res.send('404: Not found!');
-  }
-  else if (req.accepts('json')) {
-    res.send({ error: '404: Not found!' });
+  } else if (req.accepts('json')) {
+    res.send({
+      error: '404: Not found!'
+    });
   }
 
 });
@@ -104,10 +157,9 @@ router.use(function(req, res, next) {
 router.use(function(err, req, res, next) {
 
   if (req.accepts('html')) {
-    res.send('500: Server error!');
-  }
-  else if (req.accepts('json')) {
-    res.send({ error: '500: Server error!' });
+    res.send('Error ' + err.status + ': ' + err.message);
+  } else if (req.accepts('json')) {
+    res.send(err);
   }
   res.status(500);
 
@@ -117,12 +169,13 @@ router.use(function(err, req, res, next) {
 // REGISTER OUR ROUTES -------------------------------
 // all of our routes will be prefixed with /api
 
-app.use(base, router);
+app.use(config.urlbase, router);
 
 
 
 // START THE SERVER
 // =============================================================================
-app.listen(port);
+app.listen(config.port);
 
-console.log('App running on port: ' + port);
+console.log('App running on port: ' + config.port);
+console.log('Connected to database on: ' + config.db[env].url);
