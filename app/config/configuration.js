@@ -18,11 +18,11 @@ config.db = {
     password: ''
   },
   dist: {
-    name: 'ds_todoist',
-    url: 'kahana.mongohq.com',
-    port: '10053',
-    username: process.env.MONGOHQ_USER || "dappersome",
-    password: process.env.MONGOHQ_PASS || ",d4pp3rs0m3."
+    name: process.env.MONGOHQ_DBNAME || 'ds_todoist',
+    url: process.env.MONGOHQ_URL || 'kahana.mongohq.com',
+    port: process.env.MONGOHQ_PORT || '10053',
+    username: process.env.MONGOHQ_USER || "username",
+    password: process.env.MONGOHQ_PASS || "password"
   }
 }
 
