@@ -25,7 +25,7 @@ app.use(bodyParser.json());
 
 app.use(middlewares.setHeaders([
   { key: "Access-Control-Allow-Origin", value: "*" },
-  { key: "Access-Control-Allow-Methods", value: "GET,PUT,POST,DELETE,OPTIONS" },
+  { key: "Access-Control-Allow-Methods", value: "GET,PUT,POST,DELETE" },
   { key: "Access-Control-Allow-Headers", value: "Content-Type, Authorization, Content-Length, X-Requested-With" }
 ]));
 
